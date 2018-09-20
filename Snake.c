@@ -66,15 +66,14 @@ int main(int argc, char* argv[]) {
     int (*get_rand)() = rand;
     Coord coord = create_food(board, get_rand);
     display_food(game, coord);
-    wgetch(game);
+    getch();
     while(1) {
         int ch = getch();
+        bool sleep = FALSE;
         if (!((ch == LEFT && (head.heading == RIGHT || head.heading == LEFT)) ||
               (ch == RIGHT && (head.heading == LEFT || head.heading == RIGHT)) ||
               (ch == UP && (head.heading == DOWN || head.heading == UP)) ||
-              (ch == DOWN && (head.heading == UP || head.heading == DOWN)))) {
-            usleep((useconds_t)(500000 - (level - 1) * 50000));
-        }
+              (ch == DOWN && (head.heading == UP || head.heading == DOWN)))) sleep = TRUE;
         if ((ch < 0) ||
             ((ch == LEFT && head.heading == RIGHT) ||
             (ch == RIGHT && head.heading == LEFT) ||
@@ -88,6 +87,7 @@ int main(int argc, char* argv[]) {
         display_food(game, coord);
         display_length(length);
         if (result == OBSTACLE) break;
+        if (sleep) usleep((useconds_t)(500000 - (level - 1) * 50000));
     }
     game_over(game);
     endwin();
@@ -280,8 +280,8 @@ bool init_scr() {
     init_colour();
     noecho();
     keypad(stdscr, TRUE);
-    nodelay(stdscr, TRUE); // comment out this line to make the snake move step by step
     curs_set(0);
+    nodelay(stdscr, TRUE);
     return true;
 }
 
