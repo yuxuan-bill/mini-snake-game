@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include <time.h>
 
-#define ROW 5 // min: 10
-#define COL 18 // min: 30, has to be plural
+#define ROW 34 // min: 10
+#define COL 72 // min: 30, has to be plural
 
 #define GAME_ROW (ROW - 2)
 #define GAME_COL ((COL - 2) / 2)
@@ -35,10 +35,9 @@ bool init_scr();
 void init_arena(WINDOW*);
 void init_colour();
 Snake init_snake(WINDOW*, int[GAME_ROW][GAME_COL]);
-void grow(Snake*, int[GAME_ROW][GAME_COL], int*);
 void display_length(int);
 void display_snake(Snake*, WINDOW*);
-void move_snake(Snake*, int, int[GAME_ROW][GAME_COL]);
+void move_snake(Snake*, int, int[GAME_ROW][GAME_COL], bool);
 int turn(int, Snake*, int[GAME_ROW][GAME_COL], int* );
 void game_over(WINDOW*);
 Coord create_food(int[GAME_ROW][GAME_COL], int(*)());
@@ -68,22 +67,20 @@ int main(int argc, char* argv[]) {
     Coord coord = create_food(board, get_rand);
     display_food(game, coord);
     wgetch(game);
-    int ch = getch();
     while(1) {
-
+        int ch = getch();
         if (!((ch == LEFT && (head.heading == RIGHT || head.heading == LEFT)) ||
               (ch == RIGHT && (head.heading == LEFT || head.heading == RIGHT)) ||
               (ch == UP && (head.heading == DOWN || head.heading == UP)) ||
-              (ch == DOWN && (head.heading == UP || head.heading == DOWN)))) usleep((useconds_t)(500000 - (level - 1) * 50000));
+              (ch == DOWN && (head.heading == UP || head.heading == DOWN)))) {
+            usleep((useconds_t)(500000 - (level - 1) * 50000));
+        }
         if ((ch < 0) ||
             ((ch == LEFT && head.heading == RIGHT) ||
             (ch == RIGHT && head.heading == LEFT) ||
             (ch == UP && head.heading == DOWN) ||
             (ch == DOWN && head.heading == UP))) ch = head.heading;
         if (ch == 'q') break;
-        nodelay(stdscr, TRUE);
-        nodelay(game, TRUE);
-        ch = getch();//      2. snake go though food
         int result = turn(ch, &head, board, &length);
         werase(game);
         if (result == FOOD) coord = create_food(board, get_rand);
@@ -115,45 +112,41 @@ int turn(int key, Snake* head, int board[GAME_ROW][GAME_COL], int* length) {
         case LEFT:
             if (head->col != 0 && board[head->row][head->col - 1] <= FOOD) {
                 if (board[head->row][head->col - 1] == FOOD) {
-                    grow(head, board, length);
-                    board[head->row][head->col - 1] = EMPTY;
-                    move_snake(head, LEFT, board);
+                    move_snake(head, LEFT, board, TRUE);
+                    (*length)++;
                     return FOOD;
                 }
-                move_snake(head, LEFT, board);
+                move_snake(head, LEFT, board, FALSE);
             } else return OBSTACLE;
             break;
         case RIGHT:
             if (head->col != GAME_COL - 1 && board[head->row][head->col + 1] <= FOOD) {
                 if (board[head->row][head->col + 1] == FOOD) {
-                    grow(head, board, length);
-                    board[head->row][head->col + 1] = EMPTY;
-                    move_snake(head, RIGHT, board);
+                    move_snake(head, RIGHT, board, TRUE);
+                    (*length)++;
                     return FOOD;
                 }
-                move_snake(head, RIGHT, board);
+                move_snake(head, RIGHT, board, FALSE);
             } else return OBSTACLE;
             break;
         case UP:
             if (head->row != 0 && board[head->row - 1][head->col] <= FOOD) {
                 if (board[head->row - 1][head->col] == FOOD) {
-                    grow(head, board, length);
-                    board[head->row - 1][head->col] = EMPTY;
-                    move_snake(head, UP, board);
+                    move_snake(head, UP, board, TRUE);
+                    (*length)++;
                     return FOOD;
                 }
-                move_snake(head, UP, board);
+                move_snake(head, UP, board, FALSE);
             } else return OBSTACLE;
             break;
         case DOWN:
             if (head->row != GAME_ROW - 1 && board[head->row + 1][head->col] <= FOOD) {
                 if (board[head->row + 1][head->col] == FOOD) {
-                    grow(head, board, length);
-                    board[head->row + 1][head->col] = EMPTY;
-                    move_snake(head, DOWN, board);
+                    move_snake(head, DOWN, board, TRUE);
+                    (*length)++;
                     return FOOD;
                 }
-                move_snake(head, DOWN, board);
+                move_snake(head, DOWN, board, FALSE);
             } else return OBSTACLE;
             break;
         default: break;
@@ -224,7 +217,7 @@ Snake init_snake(WINDOW* game, int board[GAME_ROW][GAME_COL]) {
 }
 
 // need to check whether direction is legal first
-void move_snake(Snake* head, int direction, int board[GAME_ROW][GAME_COL]) {
+void move_snake(Snake* head, int direction, int board[GAME_ROW][GAME_COL], bool grow) {
     Snake* cur = head->next;
     int temp_row1 = head->row;
     int temp_col1 = head->col;
@@ -237,33 +230,28 @@ void move_snake(Snake* head, int direction, int board[GAME_ROW][GAME_COL]) {
         temp_row1 = temp_row2;
         temp_col1 = temp_col2;
         if (cur->next == NULL) {
-            board[cur->row][cur->col] = TAIL;
+            if (!grow) {
+                board[cur->row][cur->col] = TAIL;
+                board[temp_row1][temp_col1] = EMPTY;
+            } else {
+                board[temp_row1][temp_col1] = TAIL;
+                Snake* newpart = (Snake*)malloc(sizeof(Snake));
+                newpart->col = temp_col1;
+                newpart->row = temp_row1;
+                newpart->next = NULL;
+                cur->next = newpart;
+                break;
+            }
+
         }
         cur = cur->next;
     }
-    board[temp_row1][temp_col1] = EMPTY;
     if (direction == RIGHT) head->col++;
     if (direction == LEFT) head->col--;
     if (direction == UP) head->row--;
     if (direction == DOWN) head->row++;
     head->heading = direction;
     board[head->row][head->col] = BODY;
-}
-
-// absolutely no idea why this function works
-void grow(Snake* head, int board[GAME_ROW][GAME_COL], int* length) {
-    (*length)++;
-    Snake* cur = head;
-    while(cur->next != NULL) {
-        cur = cur->next;
-    }
-    board[cur->row][cur->col] = BODY;
-    Snake* newpart = (Snake*)malloc(sizeof(Snake));
-    newpart->col = head->col;
-    newpart->row = head->row;
-    newpart->next = NULL;
-    cur->next = newpart;
-    board[newpart->row][newpart->col] = TAIL;
 }
 
 bool init_scr() {
