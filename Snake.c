@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include <time.h>
 
-#define ROW 34 // min: 10
-#define COL 72 // min: 30, has to be plural
+#define ROW 30 // min: 10
+#define COL 68 // min: 30, has to be plural
 
 #define GAME_ROW (ROW - 2)
 #define GAME_COL ((COL - 2) / 2)
@@ -28,7 +28,7 @@ enum {
 };
 
 enum {
-    EMPTY = 0, TAIL, FOOD, BODY, OBSTACLE   // TODO: 1. add walls as the game goes on which serve as OBSTACLEs
+    EMPTY = 0, TAIL, FOOD, BODY, OBSTACLE
 };
 
 bool init_scr();
@@ -42,56 +42,76 @@ int turn(int, Snake*, int[GAME_ROW][GAME_COL], int* );
 void game_over(WINDOW*);
 Coord create_food(int[GAME_ROW][GAME_COL], int(*)());
 void display_food(WINDOW*, Coord);
+int check_args(int, char*[]);
+void display(Snake*, int, Coord, WINDOW*);
+bool opposite_direction(Snake*, int);
+void game_pause(WINDOW *);
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        printf("Usage: ./snake -lv[1~10]  eg: ./snake -lv5\n");
-        return 1;
-    }
-    int level;
-    int count = sscanf(argv[1], "-lv%d", &level);
-    if (count != 1 || level < 1 || level > 10) {
-        printf("Usage: ./snake -lv[1~10]  eg: ./snake -lv5\n");
-        return 1;
-    }
-    if (!init_scr()) return 1;
-    WINDOW* game = newwin(ROW - 2, COL - 2, 1, 1);
-    init_arena(game);
-    int length = 4;
-    display_length(length);
-    int board[ROW - 2][(COL - 2) / 2] = {EMPTY};
-    Snake head = init_snake(game, board);
-    display_snake(&head, game);
+    int level = check_args(argc, argv);
+    if (level == -1 || !init_scr()) return 1;
     srand((unsigned)time(NULL));
     int (*get_rand)() = rand;
-    Coord coord = create_food(board, get_rand);
-    display_food(game, coord);
-    getch();
+    int length = 4;
+    int board[ROW - 2][(COL - 2) / 2] = {EMPTY};
+    WINDOW* game = newwin(ROW - 2, COL - 2, 1, 1);
+    init_arena(game);
+    Snake head = init_snake(game, board);
+    Coord food_coord = create_food(board, get_rand);
+    game_pause(game);
+    display(&head, length, food_coord, game);
     while(1) {
         int ch = getch();
-        bool sleep = FALSE;
-        if (!((ch == LEFT && (head.heading == RIGHT || head.heading == LEFT)) ||
-              (ch == RIGHT && (head.heading == LEFT || head.heading == RIGHT)) ||
-              (ch == UP && (head.heading == DOWN || head.heading == UP)) ||
-              (ch == DOWN && (head.heading == UP || head.heading == DOWN)))) sleep = TRUE;
-        if ((ch < 0) ||
-            ((ch == LEFT && head.heading == RIGHT) ||
-            (ch == RIGHT && head.heading == LEFT) ||
-            (ch == UP && head.heading == DOWN) ||
-            (ch == DOWN && head.heading == UP))) ch = head.heading;
         if (ch == 'q') break;
+        if (ch == 'p') game_pause(game);
+        bool sleep = FALSE;
+        if (!opposite_direction(&head, ch)) sleep = TRUE;
+        if (ch < 0 || opposite_direction(&head, ch)) ch = head.heading;
         int result = turn(ch, &head, board, &length);
+        if (result == FOOD) food_coord = create_food(board, get_rand);
         werase(game);
-        if (result == FOOD) coord = create_food(board, get_rand);
-        display_snake(&head, game);
-        display_food(game, coord);
-        display_length(length);
+        display(&head, length, food_coord, game);
         if (result == OBSTACLE) break;
         if (sleep) usleep((useconds_t)(500000 - (level - 1) * 50000));
     }
     game_over(game);
     endwin();
     return 0;
+}
+
+void game_pause(WINDOW *game) {
+    wattron(game, COLOR_PAIR(RED_CYAN));
+    mvwprintw(game, 0, 0, "PRESS 'p' TO CONTINUE");
+    wattroff(game, COLOR_PAIR(RED_CYAN));
+    wrefresh(game);
+    while (1) {
+        if (wgetch(game) == 'p') break;
+    }
+}
+
+void display(Snake* head, int length, Coord food_coord, WINDOW* game) {
+    display_snake(head, game);
+    display_food(game, food_coord);
+    display_length(length);
+}
+
+bool opposite_direction(Snake* head, int ch) {
+    return (ch == LEFT && (head->heading == RIGHT || head->heading == LEFT)) ||
+     (ch == RIGHT && (head->heading == LEFT || head->heading == RIGHT)) ||
+     (ch == UP && (head->heading == DOWN || head->heading == UP)) ||
+     (ch == DOWN && (head->heading == UP || head->heading == DOWN));
+}
+
+int check_args(int argc, char* argv[]) {
+    int level;
+    if (argc != 2) {
+        level = -1;
+    } else {
+        int count = sscanf(argv[1], "-lv%d", &level);
+        if (count != 1 || level < 1 || level > 10) level = -1;
+    }
+    if (level == -1) printf("Usage: ./snake -lv[1~10]  eg: ./snake -lv5\n");
+    return level;
 }
 
 void game_over(WINDOW* game) {
@@ -261,7 +281,7 @@ bool init_scr() {
     if (LINES < ROW || COLS < COL) {
         printw("You need a screen no smaller than");
         attron(A_BOLD);
-        printw(" %d * %d ", ROW, COL);
+        printw(" %d * %d ", COL, ROW);
         attroff(A_BOLD);
         printw("to play.\n");
         i = false;
@@ -294,7 +314,6 @@ void init_colour() {
     init_pair(BLACK, COLOR_BLACK, COLOR_BLACK);
     init_pair(RED_CYAN, COLOR_RED, COLOR_BLACK);
     init_pair(BLUE, COLOR_BLUE, COLOR_BLUE);
-
 }
 
 void init_arena(WINDOW* game) {
