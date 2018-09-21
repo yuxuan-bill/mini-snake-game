@@ -1,12 +1,15 @@
+// needs to have ncurses installed prior to compiling (needs to add -l ncurses flag when compiling)
 #include <ncurses.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
 
+// min size of terminal
 #define ROW 30 // min: 10
 #define COL 68 // min: 30, has to be plural
 
+// size of game playground in squares
 #define GAME_ROW (ROW - 2)
 #define GAME_COL ((COL - 2) / 2)
 
@@ -28,7 +31,7 @@ enum {
 };
 
 enum {
-    EMPTY = 0, TAIL, FOOD, BODY, OBSTACLE
+    EMPTY = 0, TAIL, FOOD, BODY, OBSTACLE // specify a tail so that when snake head catches the tail, it doesn't die
 };
 
 bool init_scr();
@@ -53,6 +56,7 @@ int main(int argc, char* argv[]) {
     srand((unsigned)time(NULL));
     int (*get_rand)() = rand;
     int length = 4;
+    // game board, initially empty, use virtual coords instead of coords in terminal
     int board[ROW - 2][(COL - 2) / 2] = {EMPTY};
     WINDOW* game = newwin(ROW - 2, COL - 2, 1, 1);
     init_arena(game);
@@ -95,6 +99,8 @@ void display(Snake* head, int length, Coord food_coord, WINDOW* game) {
     display_length(length);
 }
 
+// actually should be named opposite_or_same_direction, detects the relationship
+// between keyboard input and snake movement direction
 bool opposite_direction(Snake* head, int ch) {
     return (ch == LEFT && (head->heading == RIGHT || head->heading == LEFT)) ||
      (ch == RIGHT && (head->heading == LEFT || head->heading == RIGHT)) ||
@@ -110,6 +116,7 @@ int check_args(int argc, char* argv[]) {
         int count = sscanf(argv[1], "-lv%d", &level);
         if (count != 1 || level < 1 || level > 10) level = -1;
     }
+    // yeah as you can see, I suggest using -o snake flag when compiling
     if (level == -1) printf("Usage: ./snake -lv[1~10]  eg: ./snake -lv5\n");
     return level;
 }
@@ -127,6 +134,7 @@ void game_over(WINDOW* game) {
     }
 }
 
+// makes the snake move or turn, grow if it encounters food, die if hits obstacle. Also updates the game board
 int turn(int key, Snake* head, int board[GAME_ROW][GAME_COL], int* length) {
     switch (key) {
         case LEFT:
@@ -179,7 +187,7 @@ Coord create_food(int board[GAME_ROW][GAME_COL], int(*get_rand)()) {
     do {
         row = get_rand() % GAME_ROW;
         col = get_rand() % GAME_COL;
-    } while (board[row][col] != EMPTY);
+    } while (board[row][col] != EMPTY); // can't create food on a snake body!
     board[row][col] = FOOD;
     Coord coord;
     coord.row = row;
@@ -194,6 +202,7 @@ void display_food(WINDOW* game, Coord coord) {
     wrefresh(game);
 }
 
+// doesn't use the game board to print snake, rather I choose to iterate through the snake linked list
 void display_snake(Snake* head, WINDOW* game) {
     wattrset(game, COLOR_PAIR(WHITE));
     mvwprintw(game, head->row, head->col * 2, "  ");
@@ -253,7 +262,7 @@ void move_snake(Snake* head, int direction, int board[GAME_ROW][GAME_COL], bool 
             if (!grow) {
                 board[cur->row][cur->col] = TAIL;
                 board[temp_row1][temp_col1] = EMPTY;
-            } else {
+            } else { // add a new body part of snake
                 board[temp_row1][temp_col1] = TAIL;
                 Snake* newpart = (Snake*)malloc(sizeof(Snake));
                 newpart->col = temp_col1;
@@ -301,7 +310,7 @@ bool init_scr() {
     noecho();
     keypad(stdscr, TRUE);
     curs_set(0);
-    nodelay(stdscr, TRUE);
+    nodelay(stdscr, TRUE); // sets wait time of getch() to 0, comment out this line for debug purposes
     return true;
 }
 
