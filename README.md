@@ -8,9 +8,13 @@ After compiling, run `./snake -lv[1~10]` to start the game with the level of you
 <br>
 
 In case you don't have ncurses but still want to try it out, I have compiled the game for you.
- 
+
 Download it [here](https://github.com/yuxuan-bill/mini-snake-game/raw/master/snake). (don't use Safari to download)
 
 <br>
 
 PS: don't know if the game is compatible with windows lol.
+
+<br>
+
+![game snapshoot](./snapshoot.png)
