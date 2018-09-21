@@ -4,4 +4,4 @@ project(firstc C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "-lncurses")
 
-add_executable(firstc helloworld.c Snake.c)
+add_executable(firstc Snake.c)
