@@ -13,7 +13,7 @@ Download it [here](https://github.com/yuxuan-bill/mini-snake-game/raw/master/sna
 
 <br>
 
-PS: don't know if the game is compatible with windows lol.
+This game does not work on Windows since ncurses is not available there.
 
 <br>
 
