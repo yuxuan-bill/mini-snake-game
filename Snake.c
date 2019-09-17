@@ -99,7 +99,7 @@ void display(Snake* head, int length, Coord food_coord, WINDOW* game) {
     display_length(length);
 }
 
-// actually should be named opposite_or_same_direction, detects the relationship
+// a more intuitive name would be opposite_or_same_direction, detects the relationship
 // between keyboard input and snake movement direction
 bool opposite_direction(Snake* head, int ch) {
     return (ch == LEFT && (head->heading == RIGHT || head->heading == LEFT)) ||
@@ -116,7 +116,7 @@ int check_args(int argc, char* argv[]) {
         int count = sscanf(argv[1], "-lv%d", &level);
         if (count != 1 || level < 1 || level > 10) level = -1;
     }
-    // yeah as you can see, I suggest using -o snake flag when compiling
+    // use -o snake when compiling
     if (level == -1) printf("Usage: ./snake -lv[1~10]  eg: ./snake -lv5\n");
     return level;
 }
